@@ -3,22 +3,14 @@ import path from 'path';
 
 export default defineConfig({
   build: {
-    lib: {
-      entry: path.resolve(__dirname, 'src/index.ts'),
-      name: 'JSARInteractiveXR',
-      fileName: (format) => `jsar-interactive-xr.${format}.js`,
-      formats: ['es', 'umd']
-    },
-    rollupOptions: {
-      external: ['@yodaos-jsar/api'],
-      output: {
-        globals: {
-          '@yodaos-jsar/api': 'JSAR'
-        }
-      }
-    },
+    outDir: 'dist',
     sourcemap: true,
-    minify: 'esbuild'
+    minify: 'esbuild',
+    rollupOptions: {
+      input: {
+        main: path.resolve(__dirname, 'index.html')
+      }
+    }
   },
   resolve: {
     alias: {
