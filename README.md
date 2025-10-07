@@ -2,6 +2,8 @@
 
 基于Three.js的3D积木搭建器，运行在Web浏览器中。
 
+![运行截图](/screenshots/image.jpg)
+
 ## 📋 技术栈
 
 - **Three.js** - 3D渲染引擎
