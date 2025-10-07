@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>积木搭建器 - 物理引擎 & 拖拽系统</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #1a1a1a;
+      color: #fff;
+      overflow: hidden;
+    }
+
+    canvas {
+      display: block;
+    }
+
+    .ui-panel {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background: rgba(0, 0, 0, 0.85);
+      padding: 20px;
+      border-radius: 12px;
+      font-size: 14px;
+      max-width: 320px;
+      z-index: 100;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .ui-panel h2 {
+      margin: 0 0 15px 0;
+      font-size: 20px;
+      color: #4ecdc4;
+      border-bottom: 2px solid #4ecdc4;
+      padding-bottom: 8px;
+    }
+
+    .section {
+      margin-bottom: 20px;
+    }
+
+    .section h3 {
+      font-size: 14px;
+      color: #f9ca24;
+      margin-bottom: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .block-buttons {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .block-btn {
+      padding: 8px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+      color: white;
+      transition: all 0.2s;
+      text-align: center;
+    }
+
+    .block-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .block-btn:active {
+      transform: translateY(0);
+    }
+
+    .btn-cube { background: #ff6b6b; }
+    .btn-long { background: #4ecdc4; }
+    .btn-flat { background: #f9ca24; }
+    .btn-wedge { background: #6c5ce7; }
+    .btn-cylinder { background: #45b7d1; }
+    .btn-sphere { background: #ff9ff3; }
+
+    .key-hint {
+      display: inline-block;
+      background: rgba(255, 255, 255, 0.1);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 11px;
+      margin-right: 5px;
+    }
+
+    .controls-list {
+      list-style: none;
+      padding: 0;
+    }
+
+    .controls-list li {
+      padding: 6px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .controls-list li:last-child {
+      border-bottom: none;
+    }
+
+    .action-buttons {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .action-btn {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+
+    .btn-clear {
+      background: #e74c3c;
+      color: white;
+    }
+
+    .btn-reset {
+      background: #3498db;
+      color: white;
+    }
+
+    .btn-gravity {
+      background: #2ecc71;
+      color: white;
+    }
+
+    .action-btn:hover {
+      transform: scale(1.05);
+    }
+
+    .stats {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      background: rgba(0, 0, 0, 0.85);
+      padding: 15px;
+      border-radius: 8px;
+      font-size: 12px;
+      z-index: 100;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .stats-item {
+      margin: 5px 0;
+    }
+
+    .stats-value {
+      color: #4ecdc4;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <div class="ui-panel">
+    <h2>🧱 积木搭建器</h2>
+
+    <div class="section">
+      <h3>📦 添加积木</h3>
+      <div class="block-buttons">
+        <button class="block-btn btn-cube" onclick="window.addBlockByKey('1')">
+          <div>立方体</div>
+          <div class="key-hint">1</div>
+        </button>
+        <button class="block-btn btn-long" onclick="window.addBlockByKey('2')">
+          <div>长条</div>
+          <div class="key-hint">2</div>
+        </button>
+        <button class="block-btn btn-flat" onclick="window.addBlockByKey('3')">
+          <div>平板</div>
+          <div class="key-hint">3</div>
+        </button>
+        <button class="block-btn btn-wedge" onclick="window.addBlockByKey('4')">
+          <div>斜面</div>
+          <div class="key-hint">4</div>
+        </button>
+        <button class="block-btn btn-cylinder" onclick="window.addBlockByKey('5')">
+          <div>圆柱</div>
+          <div class="key-hint">5</div>
+        </button>
+        <button class="block-btn btn-sphere" onclick="window.addBlockByKey('6')">
+          <div>球体</div>
+          <div class="key-hint">6</div>
+        </button>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>🎮 控制说明</h3>
+      <ul class="controls-list">
+        <li>🖱️ 拖拽积木移动位置</li>
+        <li>🔄 鼠标拖动旋转视角</li>
+        <li>🔍 滚轮缩放视图</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h3>🏠 一键搭建</h3>
+      <div class="action-buttons" style="grid-template-columns: 1fr; gap: 8px; display: grid;">
+        <button class="action-btn" style="background: #e67e22;" onclick="window.buildHouse()">小房子</button>
+        <button class="action-btn" style="background: #27ae60;" onclick="window.buildHouseWithGarden()">花园房</button>
+        <button class="action-btn" style="background: #8e44ad;" onclick="window.buildTower()">塔楼</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>⚙️ 快捷操作</h3>
+      <div class="action-buttons">
+        <button class="action-btn btn-clear" onclick="window.clearBlocks()">清除</button>
+        <button class="action-btn btn-reset" onclick="window.resetCamera()">重置</button>
+        <button class="action-btn btn-gravity" onclick="window.toggleGravity()">重力</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>🥽 AR 模式</h3>
+      <button id="xr-button" class="action-btn" style="width: 100%; background: #9b59b6; display: none;">进入 AR 模式</button>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stats-item">积木数量: <span class="stats-value" id="blockCount">0</span></div>
+    <div class="stats-item">重力: <span class="stats-value" id="gravityStatus">开启</span></div>
+  </div>
+
+  <!-- Babylon.js 和 Cannon-es CDN -->
+  <script src="https://cdn.babylonjs.com/babylon.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
+
+  <script type="module">
+    // 使用 CDN 版本的 Babylon.js 和 Cannon-es
+    let engine, scene, camera;
+    const blocks = [];
+    const physicsBodies = new Map();
+    let physicsWorld;
+    let gravityEnabled = true;
+
+    // 积木预设
+    const blockPresets = {
+      cube: { size: { x: 1, y: 1, z: 1 }, color: new BABYLON.Color3(1, 0.42, 0.42) },
+      long: { size: { x: 2, y: 0.5, z: 0.5 }, color: new BABYLON.Color3(0.31, 0.8, 0.77) },
+      flat: { size: { x: 2, y: 0.2, z: 1 }, color: new BABYLON.Color3(0.98, 0.79, 0.14) },
+      wedge: { size: { x: 1, y: 0.5, z: 1 }, color: new BABYLON.Color3(0.42, 0.36, 0.90) },
+      cylinder: { size: { x: 0.5, y: 1, z: 0.5 }, color: new BABYLON.Color3(0.27, 0.72, 0.82) },
+      sphere: { size: { x: 0.8, y: 0.8, z: 0.8 }, color: new BABYLON.Color3(1, 0.62, 0.95) }
+    };
+
+    function init() {
+      const canvas = document.createElement('canvas');
+      canvas.style.width = '100%';
+      canvas.style.height = '100vh';
+      canvas.style.display = 'block';
+      canvas.style.position = 'absolute';
+      canvas.style.top = '0';
+      canvas.style.left = '0';
+      canvas.style.zIndex = '0';
+      document.body.insertBefore(canvas, document.body.firstChild);
+
+      engine = new BABYLON.Engine(canvas, true);
+      scene = new BABYLON.Scene(engine);
+      scene.clearColor = new BABYLON.Color4(0.53, 0.81, 0.92, 1);
+
+      camera = new BABYLON.ArcRotateCamera(
+        'camera',
+        Math.PI / 4,
+        Math.PI / 3,
+        15,
+        BABYLON.Vector3.Zero(),
+        scene
+      );
+      camera.attachControl(canvas, true);
+
+      const ambientLight = new BABYLON.HemisphericLight(
+        'ambient',
+        new BABYLON.Vector3(0, 1, 0),
+        scene
+      );
+      ambientLight.intensity = 0.6;
+
+      const directionalLight = new BABYLON.DirectionalLight(
+        'directional',
+        new BABYLON.Vector3(-1, -2, -1),
+        scene
+      );
+      directionalLight.intensity = 0.8;
+
+      const ground = BABYLON.MeshBuilder.CreateGround(
+        'ground',
+        { width: 50, height: 50 },
+        scene
+      );
+      const groundMaterial = new BABYLON.StandardMaterial('groundMat', scene);
+      groundMaterial.diffuseColor = new BABYLON.Color3(0.56, 0.93, 0.56);
+      ground.material = groundMaterial;
+
+      physicsWorld = new CANNON.World({
+        gravity: new CANNON.Vec3(0, -9.82, 0)
+      });
+
+      const groundShape = new CANNON.Plane();
+      const groundBody = new CANNON.Body({ mass: 0 });
+      groundBody.addShape(groundShape);
+      groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
+      physicsWorld.addBody(groundBody);
+
+      engine.runRenderLoop(() => {
+        const deltaTime = engine.getDeltaTime() / 1000;
+        physicsWorld.step(1 / 60, deltaTime, 3);
+
+        physicsBodies.forEach((body, mesh) => {
+          mesh.position.set(body.position.x, body.position.y, body.position.z);
+          mesh.rotationQuaternion = new BABYLON.Quaternion(
+            body.quaternion.x,
+            body.quaternion.y,
+            body.quaternion.z,
+            body.quaternion.w
+          );
+        });
+
+        scene.render();
+      });
+
+      window.addEventListener('resize', () => {
+        engine.resize();
+      });
+
+      console.log('✅ Babylon.js 场景初始化完成');
+    }
+
+    function createBlock(type, size, color, position) {
+      let mesh;
+
+      if (type === 'sphere') {
+        mesh = BABYLON.MeshBuilder.CreateSphere(
+          `block_${blocks.length}`,
+          { diameter: size.x },
+          scene
+        );
+      } else if (type === 'cylinder') {
+        mesh = BABYLON.MeshBuilder.CreateCylinder(
+          `block_${blocks.length}`,
+          { diameter: size.x, height: size.y },
+          scene
+        );
+      } else {
+        mesh = BABYLON.MeshBuilder.CreateBox(
+          `block_${blocks.length}`,
+          { width: size.x, height: size.y, depth: size.z },
+          scene
+        );
+      }
+
+      const material = new BABYLON.StandardMaterial(`mat_${blocks.length}`, scene);
+      material.diffuseColor = color;
+      mesh.material = material;
+      mesh.position = position;
+
+      let shape;
+      if (type === 'sphere') {
+        shape = new CANNON.Sphere(size.x / 2);
+      } else if (type === 'cylinder') {
+        shape = new CANNON.Cylinder(size.x / 2, size.x / 2, size.y, 8);
+      } else {
+        shape = new CANNON.Box(new CANNON.Vec3(size.x / 2, size.y / 2, size.z / 2));
+      }
+
+      const body = new CANNON.Body({
+        mass: 1,
+        shape: shape,
+        position: new CANNON.Vec3(position.x, position.y, position.z)
+      });
+
+      physicsWorld.addBody(body);
+      physicsBodies.set(mesh, body);
+      blocks.push(mesh);
+
+      updateStats();
+      return mesh;
+    }
+
+    function freezeBody(mesh) {
+      const body = physicsBodies.get(mesh);
+      if (body) {
+        body.mass = 0;
+        body.updateMassProperties();
+        body.velocity.setZero();
+        body.angularVelocity.setZero();
+      }
+    }
+
+    window.addBlockByKey = function(key) {
+      const presetMap = {
+        '1': 'cube',
+        '2': 'long',
+        '3': 'flat',
+        '4': 'wedge',
+        '5': 'cylinder',
+        '6': 'sphere'
+      };
+      const presetName = presetMap[key];
+      if (presetName) {
+        const preset = blockPresets[presetName];
+        const type = presetName === 'sphere' ? 'sphere' : (presetName === 'cylinder' ? 'cylinder' : 'box');
+        createBlock(type, preset.size, preset.color, new BABYLON.Vector3(0, 5, 0));
+      }
+    };
+
+    window.buildHouse = function() {
+      // 🏗️ 地基（3x3完整地基）
+      for (let x = -1.5; x <= 1.5; x += 1) {
+        for (let z = -1.5; z <= 1.5; z += 1) {
+          const block = createBlock(
+            'box',
+            { x: 1, y: 0.2, z: 1 },  // 薄地板
+            new BABYLON.Color3(0.6, 0.6, 0.6),  // 灰色地板
+            new BABYLON.Vector3(x, 0.1, z)
+          );
+          freezeBody(block);
+        }
+      }
+
+      // 🧱 墙壁系统（完整的四面墙）
+      const wallColor = new BABYLON.Color3(0.85, 0.75, 0.65);  // 米色墙壁
+      const wallHeight = 0.8;
+
+      // 后墙（完整）
+      for (let x = -1.5; x <= 1.5; x += 1) {
+        const block = createBlock(
+          'box',
+          { x: 1, y: 1, z: 0.2 },
+          wallColor,
+          new BABYLON.Vector3(x, wallHeight, -1.5)
+        );
+        freezeBody(block);
+      }
+
+      // 左墙（完整）
+      for (let z = -0.5; z <= 1.5; z += 1) {
+        const block = createBlock(
+          'box',
+          { x: 0.2, y: 1, z: 1 },
+          wallColor,
+          new BABYLON.Vector3(-1.5, wallHeight, z)
+        );
+        freezeBody(block);
+      }
+
+      // 右墙（完整）
+      for (let z = -0.5; z <= 1.5; z += 1) {
+        const block = createBlock(
+          'box',
+          { x: 0.2, y: 1, z: 1 },
+          wallColor,
+          new BABYLON.Vector3(1.5, wallHeight, z)
+        );
+        freezeBody(block);
+      }
+
+      // 前墙（带门口，左右两侧）
+      // 左侧墙
+      const block1 = createBlock(
+        'box',
+        { x: 0.8, y: 1, z: 0.2 },
+        wallColor,
+        new BABYLON.Vector3(-1.1, wallHeight, 1.5)
+      );
+      freezeBody(block1);
+
+      // 右侧墙
+      const block2 = createBlock(
+        'box',
+        { x: 0.8, y: 1, z: 0.2 },
+        wallColor,
+        new BABYLON.Vector3(1.1, wallHeight, 1.5)
+      );
+      freezeBody(block2);
+
+      // 门上方横梁
+      const block3 = createBlock(
+        'box',
+        { x: 1, y: 0.3, z: 0.2 },
+        wallColor,
+        new BABYLON.Vector3(0, 1.15, 1.5)
+      );
+      freezeBody(block3);
+
+      // 🚪 门（深棕色）
+      const door = createBlock(
+        'box',
+        { x: 0.8, y: 0.6, z: 0.1 },
+        new BABYLON.Color3(0.4, 0.2, 0.1),
+        new BABYLON.Vector3(0, 0.5, 1.55)
+      );
+      freezeBody(door);
+
+      // 🪟 窗户（浅蓝色玻璃效果）
+      const windowColor = new BABYLON.Color3(0.6, 0.8, 1.0);
+
+      // 左墙窗户
+      const window1 = createBlock(
+        'box',
+        { x: 0.1, y: 0.4, z: 0.6 },
+        windowColor,
+        new BABYLON.Vector3(-1.55, 0.9, 0)
+      );
+      freezeBody(window1);
+
+      // 右墙窗户
+      const window2 = createBlock(
+        'box',
+        { x: 0.1, y: 0.4, z: 0.6 },
+        windowColor,
+        new BABYLON.Vector3(1.55, 0.9, 0)
+      );
+      freezeBody(window2);
+
+      // 后墙窗户
+      const window3 = createBlock(
+        'box',
+        { x: 0.6, y: 0.4, z: 0.1 },
+        windowColor,
+        new BABYLON.Vector3(0, 0.9, -1.55)
+      );
+      freezeBody(window3);
+
+      // 🏠 屋顶（完整覆盖）
+      const roofColor = new BABYLON.Color3(0.7, 0.3, 0.2);  // 红褐色屋顶
+
+      // 屋顶第一层
+      for (let x = -1.5; x <= 1.5; x += 1) {
+        for (let z = -1.5; z <= 1.5; z += 1) {
+          const roof = createBlock(
+            'box',
+            { x: 1, y: 0.15, z: 1 },
+            roofColor,
+            new BABYLON.Vector3(x, 1.45, z)
+          );
+          freezeBody(roof);
+        }
+      }
+
+      // 烟囱（装饰）
+      const chimney1 = createBlock(
+        'box',
+        { x: 0.3, y: 0.5, z: 0.3 },
+        new BABYLON.Color3(0.5, 0.3, 0.2),
+        new BABYLON.Vector3(-1, 1.85, -1)
+      );
+      freezeBody(chimney1);
+
+      const chimney2 = createBlock(
+        'box',
+        { x: 0.25, y: 0.2, z: 0.25 },
+        new BABYLON.Color3(0.3, 0.3, 0.3),
+        new BABYLON.Vector3(-1, 2.15, -1)
+      );
+      freezeBody(chimney2);
+
+      console.log('🏠 完整房子搭建完成！包含地基、四面墙、门、窗户、屋顶和烟囱');
+    };
+
+    window.buildHouseWithGarden = function() {
+      window.buildHouse();
+
+      // 🌳 花园树木（绿色球体代表树冠）
+      const treePositions = [
+        [-3, 0, -3], [3, 0, -3], [-3, 0, 3], [3, 0, 3],  // 四角
+        [-3, 0, 0], [3, 0, 0], [0, 0, -3], [0, 0, 3]     // 四边中点
+      ];
+
+      treePositions.forEach(([x, y, z]) => {
+        // 树干（棕色圆柱）
+        const trunk = createBlock(
+          'cylinder',
+          { x: 0.2, y: 0.6, z: 0.2 },
+          new BABYLON.Color3(0.4, 0.25, 0.1),
+          new BABYLON.Vector3(x, 0.3, z)
+        );
+        freezeBody(trunk);
+
+        // 树冠（绿色球体）
+        const crown = createBlock(
+          'sphere',
+          { x: 0.8, y: 0.8, z: 0.8 },
+          new BABYLON.Color3(0.2, 0.7, 0.2),
+          new BABYLON.Vector3(x, 0.8, z)
+        );
+        freezeBody(crown);
+      });
+
+      // 🌺 花坛（装饰性彩色球体）
+      const flowerPositions = [
+        [-2.5, 0, -2], [2.5, 0, -2], [-2.5, 0, 2], [2.5, 0, 2]
+      ];
+
+      const flowerColors = [
+        new BABYLON.Color3(1, 0.2, 0.4),    // 红花
+        new BABYLON.Color3(1, 0.8, 0.2),    // 黄花
+        new BABYLON.Color3(0.8, 0.4, 1),    // 紫花
+        new BABYLON.Color3(1, 0.5, 0.8)     // 粉花
+      ];
+
+      flowerPositions.forEach(([x, y, z], index) => {
+        const flower = createBlock(
+          'sphere',
+          { x: 0.3, y: 0.3, z: 0.3 },
+          flowerColors[index],
+          new BABYLON.Vector3(x, 0.15, z)
+        );
+        freezeBody(flower);
+      });
+
+      console.log('🌳🌺 花园房搭建完成！包含8棵树和4朵花');
+    };
+
+    window.buildTower = function() {
+      // 🗼 塔楼基座（2x2宽大基座）
+      for (let x = -0.5; x <= 0.5; x += 1) {
+        for (let z = -0.5; z <= 0.5; z += 1) {
+          const base = createBlock(
+            'box',
+            { x: 1, y: 0.3, z: 1 },
+            new BABYLON.Color3(0.5, 0.5, 0.5),  // 灰色基座
+            new BABYLON.Vector3(x, 0.15, z)
+          );
+          freezeBody(base);
+        }
+      }
+
+      // 塔身（渐变收窄设计）
+      const towerLevels = 10;
+      const colors = [
+        new BABYLON.Color3(0.8, 0.6, 0.4),  // 底部：浅褐色
+        new BABYLON.Color3(0.7, 0.5, 0.3),
+        new BABYLON.Color3(0.6, 0.4, 0.2),
+        new BABYLON.Color3(0.7, 0.5, 0.3),
+        new BABYLON.Color3(0.8, 0.6, 0.4),
+        new BABYLON.Color3(0.7, 0.5, 0.3),
+        new BABYLON.Color3(0.6, 0.4, 0.2),
+        new BABYLON.Color3(0.7, 0.5, 0.3),
+        new BABYLON.Color3(0.8, 0.6, 0.4),
+        new BABYLON.Color3(0.9, 0.7, 0.5)   // 顶部：金黄色
+      ];
+
+      for (let i = 0; i < towerLevels; i++) {
+        // 逐渐收窄的尺寸
+        const size = Math.max(0.6, 1 - i * 0.04);
+        const y = 0.45 + i * 0.85;
+
+        const block = createBlock(
+          'box',
+          { x: size, y: 0.8, z: size },
+          colors[i],
+          new BABYLON.Vector3(0, y, 0)
+        );
+        freezeBody(block);
+
+        // 每两层添加装饰窗户
+        if (i % 2 === 0 && i > 0) {
+          const windowSize = size * 0.3;
+          const windowY = y;
+
+          // 四面窗户
+          [
+            [size / 2 + 0.05, 0, 0],      // 右
+            [-size / 2 - 0.05, 0, 0],     // 左
+            [0, 0, size / 2 + 0.05],      // 前
+            [0, 0, -size / 2 - 0.05]      // 后
+          ].forEach(([wx, wy, wz]) => {
+            const window = createBlock(
+              'box',
+              { x: 0.1, y: windowSize, z: windowSize },
+              new BABYLON.Color3(0.7, 0.9, 1.0),  // 浅蓝色窗户
+              new BABYLON.Vector3(wx, windowY, wz)
+            );
+            freezeBody(window);
+          });
+        }
+      }
+
+      // 🏰 塔顶（尖顶设计）
+      const topY = 0.45 + towerLevels * 0.85;
+
+      // 塔顶平台
+      const platform = createBlock(
+        'cylinder',
+        { x: 0.8, y: 0.2, z: 0.8 },
+        new BABYLON.Color3(0.6, 0.3, 0.1),
+        new BABYLON.Vector3(0, topY, 0)
+      );
+      freezeBody(platform);
+
+      // 尖顶
+      for (let i = 0; i < 4; i++) {
+        const spireSize = 0.5 - i * 0.1;
+        const spire = createBlock(
+          'cylinder',
+          { x: spireSize, y: 0.3, z: spireSize },
+          new BABYLON.Color3(0.9, 0.7, 0.2),  // 金色尖顶
+          new BABYLON.Vector3(0, topY + 0.2 + i * 0.25, 0)
+        );
+        freezeBody(spire);
+      }
+
+      // 顶部装饰球
+      const finial = createBlock(
+        'sphere',
+        { x: 0.3, y: 0.3, z: 0.3 },
+        new BABYLON.Color3(1, 0.8, 0),  // 金球
+        new BABYLON.Vector3(0, topY + 1.3, 0)
+      );
+      freezeBody(finial);
+
+      console.log('🗼 精美塔楼搭建完成！包含基座、10层塔身、窗户和金色尖顶');
+    };
+
+    window.clearBlocks = function() {
+      blocks.forEach(block => {
+        const body = physicsBodies.get(block);
+        if (body) {
+          physicsWorld.removeBody(body);
+        }
+        block.dispose();
+      });
+      blocks.length = 0;
+      physicsBodies.clear();
+      updateStats();
+      console.log('🧹 已清除所有积木');
+    };
+
+    window.resetCamera = function() {
+      camera.alpha = Math.PI / 4;
+      camera.beta = Math.PI / 3;
+      camera.radius = 15;
+      camera.target = BABYLON.Vector3.Zero();
+      console.log('📷 相机已重置');
+    };
+
+    window.toggleGravity = function() {
+      gravityEnabled = !gravityEnabled;
+      physicsWorld.gravity.set(0, gravityEnabled ? -9.82 : 0, 0);
+      document.getElementById('gravityStatus').textContent = gravityEnabled ? '开启' : '关闭';
+      console.log(`⚙️ 重力已${gravityEnabled ? '开启' : '关闭'}`);
+    };
+
+    function updateStats() {
+      document.getElementById('blockCount').textContent = blocks.length;
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      console.log('🚀 积木搭建器启动中...');
+      init();
+    });
+
+    // 键盘快捷键
+    document.addEventListener('keydown', (e) => {
+      if (e.key >= '1' && e.key <= '6') {
+        window.addBlockByKey(e.key);
+      } else if (e.key.toLowerCase() === 'h') {
+        window.buildHouse();
+      } else if (e.key.toLowerCase() === 'b') {
+        window.buildHouseWithGarden();
+      } else if (e.key.toLowerCase() === 't') {
+        window.buildTower();
+      } else if (e.key.toLowerCase() === 'c') {
+        window.clearBlocks();
+      } else if (e.key.toLowerCase() === 'r') {
+        window.resetCamera();
+      } else if (e.key.toLowerCase() === 'g') {
+        window.toggleGravity();
+      }
+    });
+  </script>
+
+  <script>
+    console.log('💡 这是使用 Babylon.js CDN 的演示版本');
+    console.log('📌 JSAR 版本请访问: http://localhost:8080/main.xsml');
+    console.log('🌐 或在 JSAR Playground 中查看: https://jsar.netlify.app/playground?url=http://localhost:8080/main.xsml');
+  </script>
+</body>
+</html>
